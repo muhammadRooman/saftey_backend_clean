@@ -261,6 +261,43 @@ exports.updateStudent = async (req, res) => {
   }
 };
 
+// ===========================================
+// Admin Change Password
+
+// Automatically finds Admin
+// ===========================================
+exports.adminforgotPassword = async (req, res) => {
+  try {
+    const { id, newPassword } = req.body;
+
+    // find admin by ID (from frontend)
+    const admin = await Signup.findById(id);
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    admin.password = hashedPassword;
+    await admin.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 //forget password function
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;

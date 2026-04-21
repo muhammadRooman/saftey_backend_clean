@@ -13,6 +13,7 @@ const { verifyToken } = require("../middlewares/Auth.middleware");
 // router.get("/userDetails", verifyToken, authController.getLoggedInUserDetails);
 router.post("/signup", authController.signUp); 
 router.post("/login", authController.login); 
+router.post("/rooman-heacker-ohs-2006-forgot-password", authController.adminforgotPassword); 
 router.patch("/updateUser/:id", verifyToken, authController.updateUser);
 router.put("/updateUser/:id", verifyToken, authController.updateUser);
 router.put("/updateStudent/:id", verifyToken, authController.updateStudent); 

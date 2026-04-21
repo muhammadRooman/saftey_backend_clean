@@ -313,15 +313,33 @@ require("./src/admin/config/db.config").connect();
 
 // Ensure uploads folder exists
 const uploadsDir = path.join(__dirname, "uploads");
+console.log("📁 Uploads Directory:", uploadsDir);
+console.log("📁 Uploads Exists:", fs.existsSync(uploadsDir));
+if (fs.existsSync(uploadsDir)) {
+  const files = fs.readdirSync(uploadsDir);
+  console.log("📁 Files in uploads:", files);
+}
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-// app.use("/uploads", express.static(uploadsDir));
-app.use("/uploads", (req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  next();
+
+// Serve static files from uploads directory FIRST - before CORS
+app.use("/uploads", express.static(uploadsDir, {
+  dotfiles: "allow",
+  index: false,
+  setHeaders: (res, filePath) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+  }
+}));
+
+// Add a 404 handler for /uploads to help with debugging
+app.use("/uploads", (req, res) => {
+  console.log("❌ File not found in uploads:", req.path);
+  res.status(404).json({ error: "File not found" });
 });
+
 // Allowed origins
 const envAllowedOrigins = (process.env.CORS_ORIGINS || "")
   .split(",")

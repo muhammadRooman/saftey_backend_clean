@@ -140,9 +140,15 @@ router.put(
 router.delete("/teacher-info/:id", verifyToken, TeacherInfoController.deleteTeacherInfo);
 
 // OHS All Courses (single description + multiple course names)
+// OHS All Courses
 router.get("/ohs-courses", verifyToken, OhsCourseController.getOhsCourses);
-router.put("/ohs-courses", verifyToken, OhsCourseController.updateOhsCourses);
-
+router.put(
+  "/ohs-courses",
+  verifyToken,
+  OhsCourseController.upload.single("courseImage"),
+  handleMulterError,
+  OhsCourseController.updateOhsCourses
+);
 // Job posts (admin: image or manual; students: list published)
 router.post(
   "/job-post",

@@ -1,20 +1,33 @@
 const OhsCourseConfig = require("../models/ohsCourseConfig.model");
 const Signup = require("../models/SignUp.model");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
-const DEFAULT_COURSES = [
-  "NEBOSH",
-  "IOSH",
-  "OSHA",
-  "Rigger 1",
-  "Rigger 2",
-  "RIGGER3",
-  "Risk Assessment",
-  "First Aid",
-  "Fire Safety",
-];
+// ====================== MULTER SETUP ======================
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = "uploads/courses/";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `course-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
 
-const DEFAULT_DESCRIPTION =
-  "This course is designed to enhance your skills and knowledge in occupational health & safety.";
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Only image files allowed"), false);
+  }
+});
+
+// ====================== DEFAULTS ======================
+const DEFAULT_DESCRIPTION = "This course is designed to enhance your skills and knowledge in occupational health & safety.";
 const DEFAULT_CONTACT = {
   name: "OHS Academy",
   email: "ohsacademy1@gmail.com",
@@ -22,34 +35,35 @@ const DEFAULT_CONTACT = {
   address: "Main bazar sher ghar khattak plaza top floor peshawar",
 };
 
-const toResponsePayload = (docLike) => {
-  const raw = docLike?.toObject ? docLike.toObject() : (docLike || {});
+const migrateCourses = (coursesInput) => {
+  if (!coursesInput) return [];
+  if (!Array.isArray(coursesInput)) return [];
+
+  return coursesInput
+    .map(item => {
+      if (typeof item === "string") {
+        return { name: item.trim(), image: "" };
+      }
+      if (item && typeof item === "object" && item.name) {
+        return {
+          name: String(item.name).trim(),
+          image: item.image || ""
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+};
+
+const toResponsePayload = (doc) => {
+  const raw = doc?.toObject ? doc.toObject() : (doc || {});
   return {
-    ...raw,
-    description:
-      typeof raw.description === "string" && raw.description.trim()
-        ? raw.description
-        : DEFAULT_DESCRIPTION,
-    courses:
-      Array.isArray(raw.courses) && raw.courses.length
-        ? raw.courses
-        : DEFAULT_COURSES,
-    name:
-      typeof raw.name === "string" && raw.name.trim()
-        ? raw.name
-        : DEFAULT_CONTACT.name,
-    email:
-      typeof raw.email === "string" && raw.email.trim()
-        ? raw.email
-        : DEFAULT_CONTACT.email,
-    phone:
-      typeof raw.phone === "string" && raw.phone.trim()
-        ? raw.phone
-        : DEFAULT_CONTACT.phone,
-    address:
-      typeof raw.address === "string" && raw.address.trim()
-        ? raw.address
-        : DEFAULT_CONTACT.address,
+    description: raw.description || DEFAULT_DESCRIPTION,
+    courses: migrateCourses(raw.courses),
+    name: raw.name || DEFAULT_CONTACT.name,
+    email: raw.email || DEFAULT_CONTACT.email,
+    phone: raw.phone || DEFAULT_CONTACT.phone,
+    address: raw.address || DEFAULT_CONTACT.address,
   };
 };
 
@@ -59,153 +73,101 @@ const getRole = async (userId) => {
   return user?.role || null;
 };
 
-const isTeacherLike = (role) => role === "teacher";
-
-const sanitizeCourses = (courses) => {
-  if (!Array.isArray(courses)) return [];
-  const trimmed = courses
-    .map((c) => (typeof c === "string" ? c.trim() : String(c || "").trim()))
-    .filter(Boolean);
-
-  // Remove duplicates (case-insensitive) to avoid repeated card names.
-  const seen = new Set();
-  const unique = [];
-  for (const name of trimmed) {
-    const key = name.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    unique.push(name);
-  }
-  return unique;
-};
-
-// Students (and teachers) can read.
+// ====================== GET ======================
 exports.getOhsCourses = async (req, res) => {
   try {
-    const doc = await OhsCourseConfig.findOne({});
-
-    // Ensure there is always a single config document.
+    let doc = await OhsCourseConfig.findOne({});
     if (!doc) {
-      const created = await OhsCourseConfig.create({
+      doc = await OhsCourseConfig.create({
         description: DEFAULT_DESCRIPTION,
-        courses: DEFAULT_COURSES,
-        ...DEFAULT_CONTACT,
+        courses: [],
+        ...DEFAULT_CONTACT
       });
-      return res.status(200).json(toResponsePayload(created));
     }
-
-    let changed = false;
-    if (!doc.name) {
-      doc.name = DEFAULT_CONTACT.name;
-      changed = true;
-    }
-    if (!doc.email) {
-      doc.email = DEFAULT_CONTACT.email;
-      changed = true;
-    }
-    if (!doc.phone) {
-      doc.phone = DEFAULT_CONTACT.phone;
-      changed = true;
-    }
-    if (!doc.address) {
-      doc.address = DEFAULT_CONTACT.address;
-      changed = true;
-    }
-    if (changed) {
-      await doc.save();
-    }
-
     return res.status(200).json(toResponsePayload(doc));
   } catch (error) {
-    return res.status(500).json({ message: "Failed to fetch OHS courses", error: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Failed to fetch OHS courses" });
   }
 };
 
-// Teachers/Admin-like users can edit/delete course names and update the single description.
+// ====================== UPDATE ======================
 exports.updateOhsCourses = async (req, res) => {
   try {
     const role = await getRole(req.userId);
-    if (!isTeacherLike(role)) {
+    if (role !== "teacher") {
       return res.status(403).json({ message: "Only teacher can update OHS courses" });
     }
+console.log("req.body",req.body)
+    const { description, courses: coursesJson, name, email, phone, address, imageIndex } = req.body;
+    const courseImage = req.file;
 
-    const { description, courses, name, email, phone, address } = req.body || {};
-
-    // We allow partial update for safety, but at least one field must be provided.
     const updates = {};
+
     if (description !== undefined) {
-      const nextDesc = typeof description === "string" ? description.trim() : String(description || "").trim();
-      if (!nextDesc) return res.status(400).json({ message: "Description cannot be empty" });
-      updates.description = nextDesc;
+      const desc = String(description).trim();
+      if (desc) updates.description = desc;
     }
 
-    if (courses !== undefined) {
-      const nextCourses = sanitizeCourses(courses);
-      if (nextCourses.length === 0) return res.status(400).json({ message: "Courses cannot be empty" });
-      updates.courses = nextCourses;
+    if (coursesJson !== undefined && coursesJson !== null) {
+      let parsedCourses = [];
+      try {
+        parsedCourses = typeof coursesJson === "string" 
+          ? JSON.parse(coursesJson) 
+          : coursesJson;
+      } catch (e) {
+        return res.status(400).json({ message: "Invalid courses JSON format" });
+      }
+
+      updates.courses = migrateCourses(parsedCourses);
+
+      // Assign image if uploaded
+      if (courseImage && imageIndex !== undefined) {
+        const idx = parseInt(imageIndex);
+        if (updates.courses[idx]) {
+          updates.courses[idx].image = `/uploads/courses/${courseImage.filename}`;
+        }
+      }
     }
 
     if (name !== undefined) {
-      const nextName = typeof name === "string" ? name.trim() : String(name || "").trim();
-      if (!nextName) return res.status(400).json({ message: "Name cannot be empty" });
-      updates.name = nextName;
+      const n = String(name).trim();
+      if (n) updates.name = n;
     }
     if (email !== undefined) {
-      const nextEmail = typeof email === "string" ? email.trim() : String(email || "").trim();
-      if (!nextEmail) return res.status(400).json({ message: "Email cannot be empty" });
-      updates.email = nextEmail;
+      const e = String(email).trim();
+      if (e) updates.email = e;
     }
     if (phone !== undefined) {
-      const nextPhone = typeof phone === "string" ? phone.trim() : String(phone || "").trim();
-      if (!nextPhone) return res.status(400).json({ message: "Phone cannot be empty" });
-      updates.phone = nextPhone;
+      const p = String(phone).trim();
+      if (p) updates.phone = p;
     }
     if (address !== undefined) {
-      const nextAddress = typeof address === "string" ? address.trim() : String(address || "").trim();
-      if (!nextAddress) return res.status(400).json({ message: "Address cannot be empty" });
-      updates.address = nextAddress;
+      const a = String(address).trim();
+      if (a) updates.address = a;
     }
 
     if (Object.keys(updates).length === 0) {
-      return res.status(400).json({
-        message: "Provide at least one field: description, courses, name, email, phone, or address",
-      });
+      return res.status(400).json({ message: "Provide at least one field to update" });
     }
 
     let doc = await OhsCourseConfig.findOne({});
     if (!doc) {
-      doc = new OhsCourseConfig({
-        description: DEFAULT_DESCRIPTION,
-        courses: DEFAULT_COURSES,
-        ...DEFAULT_CONTACT,
-      });
+      doc = new OhsCourseConfig({ courses: [], ...DEFAULT_CONTACT });
     }
 
-    if (updates.description !== undefined) {
-      doc.description = updates.description;
-    }
-    if (updates.courses !== undefined) {
-      doc.courses = updates.courses;
-    }
-    if (updates.name !== undefined) {
-      doc.name = updates.name;
-    }
-    if (updates.email !== undefined) {
-      doc.email = updates.email;
-    }
-    if (updates.phone !== undefined) {
-      doc.phone = updates.phone;
-    }
-    if (updates.address !== undefined) {
-      doc.address = updates.address;
-    }
-
+    Object.assign(doc, updates);
     await doc.save();
 
     return res.status(200).json(toResponsePayload(doc));
+
   } catch (error) {
-    console.error("updateOhsCourses error:", error);
-    return res.status(500).json({ message: "Failed to update OHS courses", error: error.message });
+    console.error("updateOhsCourses Error:", error);
+    return res.status(500).json({ 
+      message: "Failed to update OHS courses", 
+      error: error.message 
+    });
   }
 };
 
+exports.upload = upload;   // Export multer for route
