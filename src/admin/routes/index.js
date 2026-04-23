@@ -5,6 +5,8 @@ const router = express.Router();
 const signUpRoutes = require("./user.route");
 const blogsRoutes = require("./blogs.route");
 const messageRoutes = require("./message.route");
+const studentRegistrationRoutes = require("./studentRegistration.route");
+const ohsDocumentRoutes = require("./ohsDocument.route");
 
 
 
@@ -13,6 +15,8 @@ const messageRoutes = require("./message.route");
 router.use("/auth", signUpRoutes); // e.g., /api/auth/signup
 router.use("/admin", blogsRoutes);
 router.use("/messages", messageRoutes);
+router.use("/student-registrations", studentRegistrationRoutes);
+router.use("/ohs-documents", ohsDocumentRoutes);
 
 
 

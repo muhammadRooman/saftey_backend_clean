@@ -16,7 +16,7 @@ const fileFilter = (req, file, cb) => {
   const allowedPdfType = ["application/pdf"];
   if (file.fieldname === "image" && allowedImageTypes.includes(file.mimetype)) {
     cb(null, true);
-  } else if (file.fieldname === "pdf" && allowedPdfType.includes(file.mimetype)) {
+  } else if ((file.fieldname === "pdf" || file.fieldname === "managingMaterial") && allowedPdfType.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error(`Invalid file type for ${file.fieldname}. Allowed: ${file.fieldname === "image" ? "JPEG, PNG, GIF" : "PDF"}`), false);
@@ -69,6 +69,8 @@ const storage = multer.diskStorage({
       req.savedImageId = uniqueFilename;
     } else if (file.fieldname === "pdf") {
       req.savedPdfId = uniqueFilename;
+    } else if (file.fieldname === "managingMaterial") {
+      req.savedManagingMaterialId = uniqueFilename;
     } else if (file.fieldname === "media") {
       req.savedMediaId = uniqueFilename;
     }
@@ -100,7 +102,7 @@ const uploadSingleVideo = multer({
   limits: { fileSize: COURSE_VIDEO_MAX_BYTES },
 }).single("video");
 
-// Course video upload with optional PDF attachment
+// Course video upload with optional PDF attachment and managing material
 const uploadCourseVideoOptionalPdf = multer({
   storage,
   fileFilter: (req, file, cb) => {
@@ -110,12 +112,16 @@ const uploadCourseVideoOptionalPdf = multer({
     if (file.fieldname === "pdf") {
       return fileFilter(req, file, cb);
     }
+    if (file.fieldname === "managingMaterial") {
+      return fileFilter(req, file, cb);
+    }
     return cb(new Error(`Unexpected field '${file.fieldname}'`), false);
   },
   limits: { fileSize: COURSE_VIDEO_MAX_BYTES },
 }).fields([
   { name: "video", maxCount: 1 },
   { name: "pdf", maxCount: 1 },
+  { name: "managingMaterial", maxCount: 1 },
 ]);
 
 // Chunked course-video upload: one binary part per request (field name "chunk")
