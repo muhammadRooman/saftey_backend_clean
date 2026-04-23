@@ -285,7 +285,6 @@ exports.updateVideo = async (req, res) => {
         message: "not found",
       });
     }
-
     if (req.body.title) video.title = req.body.title;
     if (req.body.courseType) video.courseType = req.body.courseType;
     if (req.body.language) video.language = parseLanguage(req.body.language);
