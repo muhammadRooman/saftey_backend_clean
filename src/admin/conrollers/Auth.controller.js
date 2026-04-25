@@ -82,7 +82,7 @@ exports.getAllUsers = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, password, role, subject, videoLanguage } = req.body;
+    const { name, email, phone, branch, password, role, subject, videoLanguage } = req.body;
 
     console.log("Update User ID:", id);
     console.log("Update Data:", req.body);
@@ -97,6 +97,7 @@ exports.updateUser = async (req, res) => {
     if (name) user.name = name;
     if (email) user.email = email;
     if (phone) user.phone = phone;
+    if (branch) user.branch = branch;
     if (role) user.role = role;
     if (subject) user.subject = subject;
     const vlUser = normalizeVideoLanguage(videoLanguage);
@@ -125,7 +126,7 @@ exports.updateUser = async (req, res) => {
 // Signup Function
 exports.signUp = async (req, res) => {
   try {
-    const { name, email, password, phone, role, subject, videoLanguage } = req.body;
+    const { name, email, password, phone, branch, role, subject, videoLanguage } = req.body;
 console.log("1234567",req.body)
     // Basic validation
     // if (!["teacher", "student"].includes(role)) {
@@ -147,6 +148,7 @@ console.log("1234567",req.body)
       password: hashedPassword,
       phone,
       subject,
+      branch,
       ...(vl ? { videoLanguage: vl } : {}),
     });
     await newUser.save();
@@ -222,13 +224,14 @@ console.log("password",password);
 // update Profile Function
 exports.updateStudent = async (req, res) => {
   try {
-    const { name, email, password, phone, subject, videoLanguage } = req.body;
+    const { name, email, password, phone, branch, subject, videoLanguage } = req.body;
     const { id } = req.params;
 
     console.log("User ID:", id);
     console.log("Name:", name);
     console.log("Email:", email);
     console.log("Phone:", phone);
+    console.log("Branch:", branch);
     console.log("Password:", password);
     console.log("subject:", subject);
     console.log("videoLanguage:", videoLanguage);
@@ -243,6 +246,8 @@ exports.updateStudent = async (req, res) => {
     if (name) user.name = name;
     if (email) user.email = email;
     if (phone) user.phone = phone;
+    if (branch) user.branch = branch;
+
     if (subject) user.subject = subject;
     const vlStudent = normalizeVideoLanguage(videoLanguage);
     if (vlStudent) user.videoLanguage = vlStudent;

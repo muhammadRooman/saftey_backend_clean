@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const signupSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
+  branch:{type:String},
   password: String,
   phone: String,
   subject: [
