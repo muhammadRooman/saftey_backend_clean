@@ -191,6 +191,12 @@ console.log("password",password);
     if (!existingUser) {
       return res.status(200).json({ message: "Invalid credentials", success: false, });
     }
+    if (existingUser.role === "student" && existingUser.accountEnabled === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is disabled by admin. Contact admin to reactivate.",
+      });
+    }
 
     console.log("password.....",password);
     console.log("existingUser.....",existingUser.password);

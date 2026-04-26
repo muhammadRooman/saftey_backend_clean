@@ -23,6 +23,8 @@ const TeacherInfoController = require("../conrollers/teacherInfo.controller");
 const OhsCourseController = require("../conrollers/ohsCourse.controller");
 const JobPostController = require("../conrollers/jobPost.controller");
 const StudentCertificateController = require("../conrollers/studentCertificate.controller");
+const FeesController = require("../conrollers/fees.controller");
+const SettingsController = require("../conrollers/settings.controller");
 
 // Certificates (register early — full URL: /api/admin/certificates)
 router.post(
@@ -241,5 +243,21 @@ router.get(
 
 
 
+
+// ==============================
+// 💰 FEES / ACCOUNTS ROUTES
+// ==============================
+router.get("/fees/students", verifyToken, FeesController.listStudentFeeSummaries);
+router.get("/fees/summary", verifyToken, FeesController.getMonthlySummary);
+router.post("/fees/payment", verifyToken, FeesController.addPayment);
+router.post("/fees/student/:studentId/total", verifyToken, FeesController.setStudentTotalFee);
+router.put("/fees/student/:studentId/video-access", verifyToken, FeesController.setStudentVideoAccess);
+router.put("/fees/student/:studentId/account-status", verifyToken, FeesController.setStudentAccountStatus);
+
+// ==============================
+// 🎥 SETTINGS (STUDENT VIDEO ENABLE/DISABLE)
+// ==============================
+router.get("/settings/video", verifyToken, SettingsController.getStudentVideoSetting);
+router.put("/settings/video", verifyToken, SettingsController.setStudentVideoSetting);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const { randomUUID } = require("crypto");
 const LiveClass = require("../models/liveClass.model");
 const Signup = require("../models/SignUp.model");
+const SettingsController = require("./settings.controller");
 
 const isHexObjectId = (id) => typeof id === "string" && /^[a-fA-F0-9]{24}$/.test(id);
 
@@ -125,9 +126,17 @@ exports.listTeacherClasses = async (req, res) => {
 exports.listStudentClasses = async (req, res) => {
   try {
     const studentId = req.userId;
-    const student = await Signup.findById(studentId).select("role");
+    const student = await Signup.findById(studentId).select("role videoAccessEnabled");
     if (!student || student.role !== "student") {
       return res.status(403).json({ message: "Only students can view their classes" });
+    }
+    if (student.videoAccessEnabled === false) {
+      return res.status(403).json({ message: "Live class video is disabled for this student" });
+    }
+
+    const videoEnabled = await SettingsController.isStudentVideoEnabled();
+    if (!videoEnabled) {
+      return res.status(403).json({ message: "Live class video is disabled by admin" });
     }
 
     const now = new Date();
@@ -149,9 +158,17 @@ exports.listStudentClasses = async (req, res) => {
 exports.getStudentActiveClass = async (req, res) => {
   try {
     const studentId = req.userId;
-    const student = await Signup.findById(studentId).select("role");
+    const student = await Signup.findById(studentId).select("role videoAccessEnabled");
     if (!student || student.role !== "student") {
       return res.status(403).json({ message: "Only students can view active class" });
+    }
+    if (student.videoAccessEnabled === false) {
+      return res.status(403).json({ message: "Live class video is disabled for this student" });
+    }
+
+    const videoEnabled = await SettingsController.isStudentVideoEnabled();
+    if (!videoEnabled) {
+      return res.status(403).json({ message: "Live class video is disabled by admin" });
     }
 
     const now = new Date();

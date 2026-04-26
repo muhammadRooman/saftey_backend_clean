@@ -24,6 +24,16 @@ const signupSchema = new mongoose.Schema({
     enum: ["Urdu", "English", "Arabic", "Pashto"],
     default: "English",
   },
+  // Per-student access control for live class and my-videos.
+  videoAccessEnabled: {
+    type: Boolean,
+    default: true,
+  },
+  // If false, student cannot stay logged in or login again.
+  accountEnabled: {
+    type: Boolean,
+    default: true,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model("signup", signupSchema);

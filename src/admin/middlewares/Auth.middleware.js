@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
+const Signup = require("../models/SignUp.model");
 require("dotenv").config();
 
-exports.verifyToken = (req, res, next) => {
+exports.verifyToken = async (req, res, next) => {
   console.log("verifyToken middleware triggered for:", req.method, req.url);
   const authHeader = req.headers.authorization;
   console.log("Authorization Header:", authHeader || "None");
@@ -24,6 +25,17 @@ exports.verifyToken = (req, res, next) => {
 
     req.userId = decoded.userId; // Explicitly set req.userId
     req.user = decoded; // Keep for other user data
+
+    const user = await Signup.findById(req.userId).select("role accountEnabled").lean();
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized: User not found" });
+    }
+    if (user.role === "student" && user.accountEnabled === false) {
+      return res.status(403).json({
+        message: "Your account is disabled by admin. You cannot access until re-enabled.",
+      });
+    }
+
     console.log("verifyToken: Token valid, userId set to", req.userId);
     next();
   } catch (err) {

@@ -335,11 +335,14 @@ exports.deleteVideo = async (req, res) => {
 ========================= */
 async function getVideosForStudentId(studentId) {
   const student = await Signup.findById(studentId).select(
-    "subject videoLanguage"
+    "subject videoLanguage videoAccessEnabled"
   );
 
   if (!student) {
     return { notFound: true };
+  }
+  if (student.videoAccessEnabled === false) {
+    return { videos: [] };
   }
 
   const subjects = Array.isArray(student.subject)
