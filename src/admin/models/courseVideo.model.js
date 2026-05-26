@@ -7,7 +7,10 @@ const courseVideoSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    videoUrl: { type: String, required: true }, // stored filename in uploads folder
+    // Video file (stored filename in uploads folder). Optional if video is YouTube-only.
+    videoUrl: { type: String, default: "" },
+    // YouTube URL (or embed URL). Optional if video is uploaded file-only.
+    youtubeUrl: { type: String, default: "" },
     /** Optional attachment for the course (uploaded by teacher/admin). */
     fileUrl: { type: String, default: "" }, // stored filename in uploads folder
     /** Optional managing material file (PDF) for the course. */

@@ -207,15 +207,20 @@ exports.completeChunkUpload = async (req, res) => {
 ========================= */
 exports.uploadVideo = async (req, res) => {
   try {
-    const { title, courseType, language } = req.body;
+    const { title, courseType, language, youtubeUrl } = req.body;
+
+    const normalizedYoutube =
+      typeof youtubeUrl === "string" ? youtubeUrl.trim() : "";
 
     // Get video file from req.files.video
     const videoFileArray = req.files?.video || [];
     const videoFile = videoFileArray.length > 0 ? videoFileArray[0] : null;
 
-    if (!videoFile) {
+    const hasVideo = Boolean(videoFile);
+    const hasYoutube = Boolean(normalizedYoutube);
+    if (!hasVideo && !hasYoutube) {
       return res.status(400).json({
-        message: "video required",
+        message: "video file or youtubeUrl required",
       });
     }
 
@@ -230,7 +235,8 @@ exports.uploadVideo = async (req, res) => {
       title,
       courseType,
       language: parseLanguage(language),
-      videoUrl: videoFile.filename,
+      videoUrl: hasVideo ? videoFile.filename : "",
+      youtubeUrl: hasYoutube ? normalizedYoutube : "",
       fileUrl: pdfFile ? pdfFile.filename : "",
       managingMaterialUrl: managingMaterialFile ? managingMaterialFile.filename : "",
       teacher: req.userId,
@@ -289,6 +295,12 @@ exports.updateVideo = async (req, res) => {
     if (req.body.courseType) video.courseType = req.body.courseType;
     if (req.body.language) video.language = parseLanguage(req.body.language);
 
+    // Frontend sends youtubeUrl always (even empty string) so we can clear it on switch.
+    if (Object.prototype.hasOwnProperty.call(req.body, "youtubeUrl")) {
+      video.youtubeUrl =
+        typeof req.body.youtubeUrl === "string" ? req.body.youtubeUrl.trim() : "";
+    }
+
     // Update video file if provided
     const videoFileArray = req.files?.video || [];
     const videoFile = videoFileArray.length > 0 ? videoFileArray[0] : null;
@@ -303,6 +315,12 @@ exports.updateVideo = async (req, res) => {
     const managingMaterialArray = req.files?.managingMaterial || [];
     const managingMaterialFile = managingMaterialArray.length > 0 ? managingMaterialArray[0] : null;
     if (managingMaterialFile) video.managingMaterialUrl = managingMaterialFile.filename;
+
+    if ((!video.videoUrl || video.videoUrl === "") && (!video.youtubeUrl || video.youtubeUrl === "")) {
+      return res.status(400).json({
+        message: "video file or youtubeUrl required",
+      });
+    }
 
     await video.save();
 
